@@ -1978,6 +1978,168 @@ inline typename Config::vertex_descriptor vertex(
     return *i;
 }
 
+// Newly added code for the merge vertices function for directed graphs with no parallel edges
+template < class Config >
+void merge_vertices(typename Config::vertex_descriptor u,
+    typename Config::vertex_descriptor v, directed_graph_helper< Config >& g_, disallow_parallel_edge_tag)
+{
+    // std::cout << "Entered into the merge vertices(directed with no parallel edges) function" << std::endl;
+
+    typedef typename Config::global_edgelist_selector EdgeListS;
+    BOOST_STATIC_ASSERT((!is_same< EdgeListS, vecS >::value));
+
+    typedef typename Config::graph_type graph_type;
+    graph_type& g = static_cast< graph_type& >(g_);
+    // typedef typename Config::edge_parallel_category Cat;
+
+    boost::remove_edge(u,v,g);
+    boost::remove_edge(v,u,g);
+
+    // adding all the incoming edges of vertex descriptor v to u
+    for (typename Config::vertex_descriptor vd : make_iterator_range(vertices(g))) 
+    {
+        if(v != vd)
+        {
+            if(edge(vd, v, g).second == true && edge(vd, u, g).second == false) 
+            {
+                typename Config::edge_descriptor e = edge(vd, v, g).first;
+                typedef typename Config::OutEdgeList::value_type::property_type PType;
+                add_edge(vd, u, *(PType*)e.get_property(), g);
+            }
+        }
+	}
+
+    // adding all the outgoing edges of vertex descriptor of v to u 
+    std::pair<typename Config::adjacency_iterator, typename Config::adjacency_iterator > adjv = adjacent_vertices(v, g);
+    typename Config::adjacency_iterator adjvit = adjv.first;
+    for (; adjvit != adjv.second; ++adjvit)
+    {
+        if(edge(u, *adjvit,g).second == false) 
+        {
+            typename Config::edge_descriptor e = edge(v, *adjvit, g).first;
+            typedef typename Config::OutEdgeList::value_type::property_type PType;
+            add_edge(u, *adjvit, *(PType*)e.get_property(), g);
+        }
+    }
+
+    // removes all the incoming and outgoing edges of vertex descriptor u 
+    clear_vertex(v,g);
+    // removes the vertex from the graph
+    remove_vertex(v,g);
+}
+
+// Newly added code for the merge vertices function for directed graphs with parallel edges
+template < class Config >
+void merge_vertices(typename Config::vertex_descriptor u,
+    typename Config::vertex_descriptor v, directed_graph_helper< Config >& g_, allow_parallel_edge_tag)
+{
+    // std::cout << "Entered into the merge vertices(directed with parallel edges) function" << std::endl;
+
+    typedef typename Config::global_edgelist_selector EdgeListS;
+    BOOST_STATIC_ASSERT((!is_same< EdgeListS, vecS >::value));
+
+    typedef typename Config::graph_type graph_type;
+    graph_type& g = static_cast< graph_type& >(g_);
+    // typedef typename Config::edge_parallel_category Cat;
+
+    boost::remove_edge(u,v,g);
+    boost::remove_edge(v,u,g);
+
+    // adding all the incoming edges of vertex descriptor v to u
+    for (typename Config::vertex_descriptor vd : make_iterator_range(vertices(g))) 
+    {
+        if(v != vd)
+        {
+            typename Config::edge_descriptor e = edge(vd, v, g).first;
+            typedef typename Config::OutEdgeList::value_type::property_type PType;
+            if(edge(vd, v, g).second == true) add_edge(vd, u, *(PType*)e.get_property(), g);
+        }
+	}
+
+    // adding all the outgoing edges of vertex descriptor of v to u 
+    std::pair<typename Config::adjacency_iterator, typename Config::adjacency_iterator > adjv = adjacent_vertices(v, g);
+    typename Config::adjacency_iterator adjvit = adjv.first;
+    for (; adjvit != adjv.second; ++adjvit)
+    {
+        typename Config::edge_descriptor e = edge(v, *adjvit, g).first;
+        typedef typename Config::OutEdgeList::value_type::property_type PType;
+        add_edge(u, *adjvit, *(PType*)e.get_property(), g);
+    }
+
+    // removes all the incoming and outgoing edges of vertex descriptor u 
+    clear_vertex(v,g);
+    // removes the vertex from the graph
+    remove_vertex(v,g);
+}
+
+// Newly added code for the merge vertices function for undirected graphs with parallel edges
+template < class Config >
+void merge_vertices(typename Config::vertex_descriptor u,
+    typename Config::vertex_descriptor v, undirected_graph_helper< Config >& g_, allow_parallel_edge_tag)
+{
+    // std::cout << "Entered into the merge vertices(undirected with parallel edges) function" << std::endl;
+
+    typedef typename Config::global_edgelist_selector EdgeListS;
+    // type mismatch check before applying the logic
+    BOOST_STATIC_ASSERT((!is_same< EdgeListS, vecS >::value));
+
+    typedef typename Config::graph_type graph_type;
+    // typecasting the input graph to the graph_type which present in the config(placeholder) class
+    graph_type& g = static_cast< graph_type& >(g_);
+
+    boost::remove_edge(u,v,g);
+
+    // adding all the edges of vertex descriptor u to v
+    std::pair<typename Config::adjacency_iterator, typename Config::adjacency_iterator > adjv = adjacent_vertices(u, g);
+    typename Config::adjacency_iterator adjvit = adjv.first;
+    for (; adjvit != adjv.second; ++adjvit)
+    {
+        typename Config::edge_descriptor e = edge(u, *adjvit, g).first;
+        typedef typename Config::OutEdgeList::value_type::property_type PType;
+        add_edge(v, *adjvit, *(PType*)e.get_property(), g);
+    }
+
+    // removes all the incoming and outgoing edges of vertex descriptor u 
+    clear_vertex(u,g);
+    // removes the vertex from the graph
+    remove_vertex(u,g);
+}
+
+// Newly added code for the merge vertices function for undirected graphs with no parallel edges
+template < class Config >
+void merge_vertices(typename Config::vertex_descriptor u,
+    typename Config::vertex_descriptor v, undirected_graph_helper< Config >& g_, disallow_parallel_edge_tag)
+{
+    // std::cout << "Entered into the merge vertices(undirected with no parallel edges) function" << std::endl;
+    typedef typename Config::global_edgelist_selector EdgeListS;
+    // type mismatch check before applying the logic
+    BOOST_STATIC_ASSERT((!is_same< EdgeListS, vecS >::value));
+
+    typedef typename Config::graph_type graph_type;
+    // typecasting the input graph to the graph_type which present in the config(placeholder) class
+    graph_type& g = static_cast< graph_type& >(g_);
+
+    boost::remove_edge(u,v,g);
+
+    // adding all the edges of vertex descriptor u to v
+    std::pair<typename Config::adjacency_iterator, typename Config::adjacency_iterator > adjv = adjacent_vertices(u, g);
+    typename Config::adjacency_iterator adjvit = adjv.first;
+    for (; adjvit != adjv.second; ++adjvit)
+    {
+        if(edge(v, *adjvit, g).second == false) 
+        {
+            typename Config::edge_descriptor e = edge(u, *adjvit, g).first;
+            typedef typename Config::OutEdgeList::value_type::property_type PType;
+            add_edge(v, *adjvit, *(PType*)e.get_property(), g);
+        }
+    }
+    // removes all the incoming and outgoing edges of vertex descriptor u 
+    clear_vertex(u,g);
+    // removes the vertex from the graph
+    remove_vertex(u,g);
+}
+
+
 //=========================================================================
 // Vector-Backbone Adjacency List Implementation
 
